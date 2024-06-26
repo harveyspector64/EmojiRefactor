@@ -14,10 +14,13 @@ export const birdStates = {
 export class Bird {
     constructor(x, y) {
         this.element = this.createBirdElement(x, y);
-        this.currentState = birdStates.FLYING;
         this.hunger = 100;
         this.foodConsumed = 0;
+        this.currentState = birdStates.FLYING;
+        this.id = `bird-${Bird.counter++}`;
     }
+
+    static counter = 0;
 
     createBirdElement(x, y) {
         const birdElement = document.createElement('div');
@@ -26,14 +29,171 @@ export class Bird {
         birdElement.style.position = 'absolute';
         birdElement.style.left = `${x}px`;
         birdElement.style.top = `${y}px`;
+        birdElement.style.zIndex = '1';
         return birdElement;
     }
 
-    update(playArea) {
-        // Update bird state and position
+    setState(newState) {
+        console.log(`Bird state transition: ${this.currentState} -> ${newState}`);
+        this.currentState = newState;
     }
 
-    // Other methods...
+    update(playArea) {
+        switch (this.currentState) {
+            case birdStates.FLYING:
+                this.fly(playArea);
+                break;
+            case birdStates.WALKING:
+                this.walk(playArea);
+                break;
+            case birdStates.MOVING_TO_WORM:
+                this.moveToWorm(playArea);
+                break;
+            case birdStates.PERCHING:
+                this.perch();
+                break;
+        }
+        this.hunger = Math.max(this.hunger - 0.1, 0);
+        this.checkHunger(playArea);
+    }
+
+fly(playArea) {
+        const currentX = parseFloat(this.element.style.left);
+        const currentY = parseFloat(this.element.style.top);
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * 5 + 2;
+        const newX = currentX + distance * Math.cos(angle);
+        const newY = currentY + distance * Math.sin(angle);
+        this.element.style.left = `${Math.max(0, Math.min(newX, playArea.clientWidth - 20))}px`;
+        this.element.style.top = `${Math.max(0, Math.min(newY, playArea.clientHeight - 20))}px`;
+        this.detectButterflies(playArea);
+    }
+
+    walk(playArea) {
+        const currentX = parseFloat(this.element.style.left);
+        const currentY = parseFloat(this.element.style.top);
+        const distance = Math.random() * 3 + 1;
+        const angle = Math.random() * Math.PI * 2;
+        const newX = currentX + distance * Math.cos(angle);
+        const newY = currentY + distance * Math.sin(angle);
+        this.element.style.left = `${Math.max(0, Math.min(newX, playArea.clientWidth - 20))}px`;
+        this.element.style.top = `${Math.max(0, Math.min(newY, playArea.clientHeight - 20))}px`;
+        this.detectWorms(playArea);
+    }
+
+    moveToWorm(playArea) {
+        const worms = playArea.querySelectorAll('.worm');
+        if (worms.length > 0) {
+            const nearestWorm = this.findNearestWorm(worms);
+            if (nearestWorm) {
+                const birdRect = this.element.getBoundingClientRect();
+                const wormRect = nearestWorm.getBoundingClientRect();
+                const dx = wormRect.left - birdRect.left;
+                const dy = wormRect.top - birdRect.top;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 5) {
+                    this.eatWorm(nearestWorm);
+                } else {
+                    const speed = 2;
+                    const newX = parseFloat(this.element.style.left) + (dx / distance) * speed;
+                    const newY = parseFloat(this.element.style.top) + (dy / distance) * speed;
+                    this.element.style.left = `${newX}px`;
+                    this.element.style.top = `${newY}px`;
+                }
+            } else {
+                this.setState(birdStates.WALKING);
+            }
+        } else {
+            this.setState(birdStates.WALKING);
+        }
+    }
+
+    perch() {
+        // Birds don't move while perching
+    }
+
+    checkHunger(playArea) {
+        if (this.hunger <= 30 && this.currentState !== birdStates.WALKING) {
+            this.setState(birdStates.DESCENDING);
+            this.descendToGround(playArea);
+        }
+    }
+
+    descendToGround(playArea) {
+        this.element.style.transition = 'top 1s';
+        this.element.style.top = `${parseFloat(this.element.style.top) + 50}px`;
+        setTimeout(() => {
+            this.setState(birdStates.WALKING);
+            this.walk(playArea);
+        }, 1000);
+    }
+
+    detectWorms(playArea) {
+        const worms = playArea.querySelectorAll('.worm');
+        const nearestWorm = this.findNearestWorm(worms);
+        if (nearestWorm) {
+            this.setState(birdStates.MOVING_TO_WORM);
+        }
+    }
+
+    detectButterflies(playArea) {
+        const butterflies = playArea.querySelectorAll('.butterfly');
+        butterflies.forEach(butterfly => {
+            const distance = this.getDistance(this.element, butterfly);
+            if (distance < 20) {
+                this.eatButterfly(butterfly);
+            }
+        });
+    }
+
+    eatWorm(worm) {
+        worm.remove();
+        this.hunger = Math.min(this.hunger + 20, 100);
+        this.foodConsumed += 20;
+        console.log(`Bird ${this.id} ate a worm. Food consumed: ${this.foodConsumed}`);
+        this.checkForNestCreation();
+    }
+
+    eatButterfly(butterfly) {
+        butterfly.remove();
+        this.hunger = Math.min(this.hunger + 5, 100);
+        this.foodConsumed += 5;
+        console.log(`Bird ${this.id} ate a butterfly. Food consumed: ${this.foodConsumed}`);
+        this.checkForNestCreation();
+    }
+
+    checkForNestCreation() {
+        if (this.foodConsumed >= 120) {
+            this.createNest();
+            this.foodConsumed = 0;
+        }
+    }
+
+    createNest() {
+        // Implement nest creation logic
+        console.log(`Bird ${this.id} is creating a nest`);
+    }
+
+    findNearestWorm(worms) {
+        let nearestWorm = null;
+        let minDistance = Infinity;
+        worms.forEach(worm => {
+            const distance = this.getDistance(this.element, worm);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestWorm = worm;
+            }
+        });
+        return nearestWorm;
+    }
+
+    getDistance(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+        const dx = rect1.left - rect2.left;
+        const dy = rect1.top - rect2.top;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
 }
 
 export function addBird(x, y, playArea) {
