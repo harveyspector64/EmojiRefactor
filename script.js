@@ -1,182 +1,268 @@
-// butterfly.js
+// script.js
+
 import { EMOJIS } from './constants.js';
+import { FloweringBush, addFloweringBush } from './flowering-bush.js';
+import { Tree, addTree, unlockTree } from './tree.js';
+import { Butterfly, addButterflies } from './butterfly.js';
+import { Worm, addWorm, addRandomWorms } from './worm.js';
+import { Bird, addBird } from './bird.js';
 
-export class Butterfly {
-    constructor(homeBush) {
-        this.element = this.createButterflyElement();
-        this.homeBush = homeBush;
-        this.state = 'flying';
-        this.carriesPollen = false;
-        this.pollenSource = null;
-        this.hunger = 100;
-        this.setPosition(this.getRandomOffscreenPosition());
-        this.flutterOffset = 0;
-        this.flutterSpeed = Math.random() * 0.1 + 0.05;
-    }
-
-    createButterflyElement() {
-        const butterflyElement = document.createElement('div');
-        butterflyElement.textContent = EMOJIS.BUTTERFLY;
-        butterflyElement.classList.add('emoji', 'butterfly');
-        butterflyElement.style.position = 'absolute';
-        return butterflyElement;
-    }
-
-    setPosition(position) {
-        this.element.style.left = `${position.x}px`;
-        this.element.style.top = `${position.y}px`;
-    }
-
-    getPosition() {
-        return {
-            x: parseFloat(this.element.style.left),
-            y: parseFloat(this.element.style.top)
+class GameEngine {
+    constructor() {
+        console.log("GameEngine: Initializing");
+        this.entities = {
+            bushes: [],
+            trees: [],
+            butterflies: [],
+            birds: [],
+            worms: []
         };
+        this.playArea = document.getElementById('play-area');
+        this.emojiPanel = document.getElementById('emoji-panel');
+        this.eventMenu = document.getElementById('event-menu');
+        this.selectedEmoji = null;
+        this.draggedElement = null;
+        this.firstBirdLanded = false;
     }
 
-    getRandomOffscreenPosition() {
-        const playArea = document.getElementById('play-area');
-        const width = playArea.clientWidth;
-        const height = playArea.clientHeight;
-        const side = Math.floor(Math.random() * 4);
-        switch (side) {
-            case 0: return { x: Math.random() * width, y: -20 };
-            case 1: return { x: width + 20, y: Math.random() * height };
-            case 2: return { x: Math.random() * width, y: height + 20 };
-            case 3: return { x: -20, y: Math.random() * height };
-        }
+    initialize() {
+        console.log("GameEngine: Setting up game");
+        this.setupEventListeners();
+        this.initializeEmojis();
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
 
-    update(playArea) {
-        if (this.state === 'resting') {
-            if (Math.random() < 0.1) {
-                this.state = 'flying';
-            } else {
-                return;
+    setupEventListeners() {
+        console.log("GameEngine: Setting up event listeners");
+        this.emojiPanel.addEventListener('mousedown', this.handleDragStart.bind(this));
+        this.playArea.addEventListener('mousemove', this.handleDragOver.bind(this));
+        this.playArea.addEventListener('mouseup', this.handleDrop.bind(this));
+        this.emojiPanel.addEventListener('touchstart', this.handleTouchStart.bind(this));
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this));
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this));
+    }
+
+    initializeEmojis() {
+        console.log("GameEngine: Initializing emoji panel");
+        const initialEmojis = [
+            { id: 'flowering-bush', emoji: EMOJIS.BUSH },
+            { id: 'tree', emoji: EMOJIS.TREE, disabled: true }
+        ];
+
+        initialEmojis.forEach(item => {
+            const element = document.createElement('div');
+            element.id = item.id;
+            element.textContent = item.emoji;
+            element.classList.add('emoji');
+            if (item.disabled) {
+                element.classList.add('disabled');
             }
-        }
+            this.emojiPanel.appendChild(element);
+        });
+    }
 
-        this.move(playArea);
-        this.hunger = Math.max(this.hunger - 0.1, 0);
+    handleDragStart(e) {
+        if (e.target.classList.contains('emoji') && !e.target.classList.contains('disabled')) {
+            this.selectedEmoji = e.target.textContent;
+            this.draggedElement = e.target.cloneNode(true);
+            this.draggedElement.style.position = 'absolute';
+            this.draggedElement.style.pointerEvents = 'none';
+            document.body.appendChild(this.draggedElement);
+            this.updateDraggedElementPosition(e.clientX, e.clientY);
+            console.log(`GameEngine: Started dragging ${this.selectedEmoji}`);
+        }
+    }
+
+    handleDragOver(e) {
+        if (this.draggedElement) {
+            this.updateDraggedElementPosition(e.clientX, e.clientY);
+        }
+    }
+
+    handleDrop(e) {
+        if (this.selectedEmoji) {
+            const rect = this.playArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            this.addEmojiToPlayArea(this.selectedEmoji, x, y);
+            this.resetDragState();
+            console.log(`GameEngine: Dropped ${this.selectedEmoji} at (${x}, ${y})`);
+        }
+    }
+
+    handleTouchStart(e) {
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target.classList.contains('emoji') && !target.classList.contains('disabled')) {
+            this.selectedEmoji = target.textContent;
+            this.draggedElement = target.cloneNode(true);
+            this.draggedElement.style.position = 'absolute';
+            this.draggedElement.style.pointerEvents = 'none';
+            document.body.appendChild(this.draggedElement);
+            this.updateDraggedElementPosition(touch.clientX, touch.clientY);
+            console.log(`GameEngine: Started touch drag of ${this.selectedEmoji}`);
+        }
+    }
+
+    handleTouchMove(e) {
+        if (this.draggedElement) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.updateDraggedElementPosition(touch.clientX, touch.clientY);
+        }
+    }
+
+    handleTouchEnd(e) {
+        if (this.selectedEmoji) {
+            const touch = e.changedTouches[0];
+            const rect = this.playArea.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            this.addEmojiToPlayArea(this.selectedEmoji, x, y);
+            this.resetDragState();
+            console.log(`GameEngine: Touch dropped ${this.selectedEmoji} at (${x}, ${y})`);
+        }
+    }
+
+    updateDraggedElementPosition(x, y) {
+        this.draggedElement.style.left = `${x - 15}px`;
+        this.draggedElement.style.top = `${y - 15}px`;
+    }
+
+    resetDragState() {
+        if (this.draggedElement) {
+            document.body.removeChild(this.draggedElement);
+        }
+        this.draggedElement = null;
+        this.selectedEmoji = null;
+    }
+
+    addEmojiToPlayArea(emoji, x, y) {
+        console.log(`GameEngine: Adding ${emoji} to play area at (${x}, ${y})`);
+        switch (emoji) {
+            case EMOJIS.BUSH:
+                const bush = addFloweringBush(x, y, this.playArea);
+                this.entities.bushes.push(bush);
+                setTimeout(() => {
+                    const newButterflies = addButterflies(bush, this.playArea);
+                    this.entities.butterflies = this.entities.butterflies.concat(newButterflies);
+                    console.log(`GameEngine: Added ${newButterflies.length} butterflies`);
+                }, Math.random() * 3000 + 1000);
+                this.unlockTreeIfNeeded();
+                break;
+            case EMOJIS.TREE:
+                const tree = addTree(x, y, this.playArea);
+                this.entities.trees.push(tree);
+                setTimeout(() => {
+                    const bird = addBird(tree, this.playArea);
+                    this.entities.birds.push(bird);
+                    console.log("GameEngine: Added a bird");
+                }, Math.random() * 3000 + 1000);
+                break;
+            case EMOJIS.WORM:
+                const worm = addWorm(x, y, this.playArea);
+                this.entities.worms.push(worm);
+                break;
+        }
+        this.addEventLogMessage(`A ${this.getEmojiName(emoji)} has been added to the ecosystem!`);
+    }
+
+    unlockTreeIfNeeded() {
+        if (this.entities.bushes.length === 1) {
+            const treeElement = document.getElementById('tree');
+            unlockTree(treeElement);
+            console.log("GameEngine: Unlocked tree emoji");
+        }
+    }
+
+    getEmojiName(emoji) {
+        switch(emoji) {
+            case EMOJIS.BUSH: return 'bush';
+            case EMOJIS.TREE: return 'tree';
+            case EMOJIS.BUTTERFLY: return 'butterfly';
+            case EMOJIS.BIRD: return 'bird';
+            case EMOJIS.WORM: return 'worm';
+            default: return 'creature';
+        }
+    }
+
+    addEventLogMessage(message) {
+        const eventMessageElement = document.createElement('div');
+        eventMessageElement.className = 'event-message';
+        eventMessageElement.textContent = message;
         
-        if (this.hunger <= 0) {
-            this.die(playArea);
+        this.eventMenu.appendChild(eventMessageElement);
+        
+        while (this.eventMenu.children.length > 6) {
+            this.eventMenu.removeChild(this.eventMenu.children[1]);
+        }
+        
+        console.log(`BREAKING NEWS: ${message}`);
+    }
+
+    gameLoop(timestamp) {
+        this.update();
+        this.checkInteractions();
+        requestAnimationFrame(this.gameLoop.bind(this));
+    }
+
+    update() {
+        for (let entityType in this.entities) {
+            this.entities[entityType].forEach(entity => {
+                if (typeof entity.update === 'function') {
+                    entity.update(this.playArea);
+                } else {
+                    console.warn(`GameEngine: Update method not found for entity type: ${entityType}`);
+                }
+            });
         }
     }
 
-    move(playArea) {
-        const currentPosition = this.getPosition();
-        let targetPosition;
+    checkInteractions() {
+        this.checkBirdWormInteractions();
+        this.checkButterflyBushInteractions();
+    }
 
-        if (this.homeBush && Math.random() < 0.8) {
-            targetPosition = this.getBushPosition(this.homeBush);
-        } else {
-            const nearbyBush = this.findNearbyBush(playArea);
-            if (nearbyBush) {
-                targetPosition = this.getBushPosition(nearbyBush);
-                this.visitBush(nearbyBush);
-            } else {
-                targetPosition = this.getRandomPositionInPlay(playArea);
-            }
-        }
-
-        if (targetPosition) {
-            const dx = targetPosition.x - currentPosition.x;
-            const dy = targetPosition.y - currentPosition.y;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-
-            if (distance > 5) {
-                const speed = 2;
-                const newX = currentPosition.x + (dx / distance) * speed;
-                const newY = currentPosition.y + (dy / distance) * speed;
-                
-                // Add flutter movement
-                this.flutterOffset += this.flutterSpeed;
-                const flutterX = Math.sin(this.flutterOffset) * 3;
-                const flutterY = Math.cos(this.flutterOffset * 2) * 2;
-                
-                this.setPosition({
-                    x: newX + flutterX,
-                    y: newY + flutterY
+    checkBirdWormInteractions() {
+        this.entities.birds.forEach(bird => {
+            if (bird.currentState === 'walking') {
+                this.entities.worms.forEach((worm, index) => {
+                    if (this.checkCollision(bird.element, worm.element)) {
+                        bird.eatWorm(worm);
+                        this.entities.worms.splice(index, 1);
+                        this.addEventLogMessage(`A bird has eaten a worm!`);
+                        console.log("GameEngine: Bird ate a worm");
+                    }
                 });
-            } else if (Math.random() < 0.3) {
-                this.state = 'resting';
             }
-        }
+        });
     }
 
-    getBushPosition(bush) {
-        if (bush && bush.element && bush.element.style) {
-            return {
-                x: parseFloat(bush.element.style.left),
-                y: parseFloat(bush.element.style.top)
-            };
-        }
-        // If the bush doesn't exist, return the butterfly's current position
-        return this.getPosition();
+    checkButterflyBushInteractions() {
+        this.entities.butterflies.forEach(butterfly => {
+            this.entities.bushes.forEach(bush => {
+                if (this.checkCollision(butterfly.element, bush.element)) {
+                    butterfly.pollinate(bush);
+                }
+            });
+        });
     }
 
-    findNearbyBush(playArea) {
-        const bushes = Array.from(playArea.querySelectorAll('.bush'));
-        const currentPosition = this.getPosition();
-        for (let bushElement of bushes) {
-            const bushPosition = {
-                x: parseFloat(bushElement.style.left),
-                y: parseFloat(bushElement.style.top)
-            };
-            const distance = this.getDistance(currentPosition, bushPosition);
-            if (distance < 200) {
-                return { element: bushElement };
-            }
-        }
-        return null;
-    }
-
-    visitBush(bush) {
-        if (this.carriesPollen && bush !== this.pollenSource) {
-            this.pollinate(bush);
-        }
-        this.carriesPollen = true;
-        this.pollenSource = bush;
-        this.hunger = Math.min(this.hunger + 20, 100);
-    }
-
-    pollinate(bush) {
-        if (bush && typeof bush.pollinate === 'function') {
-            if (Math.random() < 0.1) {
-                bush.pollinate(10);
-            }
-        }
-        this.carriesPollen = false;
-        this.pollenSource = null;
-    }
-
-    getRandomPositionInPlay(playArea) {
-        return {
-            x: Math.random() * (playArea.clientWidth - 20),
-            y: Math.random() * (playArea.clientHeight - 20)
-        };
-    }
-
-    getDistance(pos1, pos2) {
-        const dx = pos1.x - pos2.x;
-        const dy = pos1.y - pos2.y;
-        return Math.sqrt(dx*dx + dy*dy);
-    }
-
-    die(playArea) {
-        playArea.removeChild(this.element);
-        // The GameEngine should handle removing this butterfly from its entities
+    checkCollision(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+        return !(rect1.right < rect2.left || 
+                 rect1.left > rect2.right || 
+                 rect1.bottom < rect2.top || 
+                 rect1.top > rect2.bottom);
     }
 }
 
-export function addButterflies(bush, playArea) {
-    const numButterflies = Math.floor(Math.random() * 2) + 1;
-    const newButterflies = [];
-    for (let i = 0; i < numButterflies; i++) {
-        const butterfly = new Butterfly(bush);
-        playArea.appendChild(butterfly.element);
-        newButterflies.push(butterfly);
-    }
-    return newButterflies;
-}
+// Initialize the game when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM fully loaded, initializing game");
+    const game = new GameEngine();
+    game.initialize();
+});
+
+console.log("script.js loaded");
