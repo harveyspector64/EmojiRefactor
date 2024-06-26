@@ -1,3 +1,4 @@
+// worm.js
 import { EMOJIS } from './constants.js';
 
 export class Worm {
@@ -40,6 +41,10 @@ export class Worm {
             clearTimeout(this.wiggleInterval);
             this.wiggleInterval = null;
         }
+    }
+
+    update() {
+        // Worms don't need regular updates beyond their wiggle animation
     }
 
     remove() {
