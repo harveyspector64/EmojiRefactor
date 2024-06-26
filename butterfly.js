@@ -8,6 +8,7 @@ export class Butterfly {
         this.state = 'flying';
         this.carriesPollen = false;
         this.pollenSource = null;
+        this.hunger = 100;
         this.setPosition(this.getRandomOffscreenPosition());
     }
 
@@ -16,7 +17,6 @@ export class Butterfly {
         butterflyElement.textContent = EMOJIS.BUTTERFLY;
         butterflyElement.classList.add('emoji', 'butterfly');
         butterflyElement.style.position = 'absolute';
-        butterflyElement.style.fontSize = '0.8em'; // Smaller size for butterflies
         return butterflyElement;
     }
 
@@ -33,21 +33,69 @@ export class Butterfly {
     }
 
     getRandomOffscreenPosition() {
-        const side = Math.floor(Math.random() * 4);
         const playArea = document.getElementById('play-area');
         const width = playArea.clientWidth;
         const height = playArea.clientHeight;
-
+        const side = Math.floor(Math.random() * 4);
         switch (side) {
-            case 0: // Top
-                return { x: Math.random() * width, y: -20 };
-            case 1: // Right
-                return { x: width + 20, y: Math.random() * height };
-            case 2: // Bottom
-                return { x: Math.random() * width, y: height + 20 };
-            case 3: // Left
-                return { x: -20, y: Math.random() * height };
+            case 0: return { x: Math.random() * width, y: -20 };
+            case 1: return { x: width + 20, y: Math.random() * height };
+            case 2: return { x: Math.random() * width, y: height + 20 };
+            case 3: return { x: -20, y: Math.random() * height };
         }
+    }
+
+    update(playArea) {
+        if (this.state === 'resting') {
+            if (Math.random() < 0.1) {
+                this.state = 'flying';
+            } else {
+                return;
+            }
+        }
+
+        this.move(playArea);
+        this.hunger = Math.max(this.hunger - 0.1, 0);
+        
+        if (this.hunger <= 0) {
+            this.die(playArea);
+        }
+    }
+
+    move(playArea) {
+        const currentPosition = this.getPosition();
+        let targetPosition;
+
+        if (Math.random() < 0.8) {
+            targetPosition = this.getBushPosition(this.homeBush);
+        } else {
+            const nearbyBush = this.findNearbyBush(playArea);
+            if (nearbyBush) {
+                targetPosition = this.getBushPosition(nearbyBush);
+                this.visitBush(nearbyBush);
+            } else {
+                targetPosition = this.getRandomPositionInPlay(playArea);
+            }
+        }
+
+        const dx = targetPosition.x - currentPosition.x;
+        const dy = targetPosition.y - currentPosition.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+
+        if (distance > 5) {
+            const speed = 2;
+            const newX = currentPosition.x + (dx / distance) * speed;
+            const newY = currentPosition.y + (dy / distance) * speed;
+            this.setPosition({x: newX, y: newY});
+        } else if (Math.random() < 0.3) {
+            this.state = 'resting';
+        }
+
+        // Add some randomness to the movement
+        this.setPosition({
+            x: parseFloat(this.element.style.left) + (Math.random() - 0.5) * 2,
+            y: parseFloat(this.element.style.top) + (Math.random() - 0.5) * 2
+        });
     }
 
     getBushPosition(bush) {
@@ -57,39 +105,54 @@ export class Butterfly {
         };
     }
 
-    update(playArea) {
-        this.move(playArea);
+    findNearbyBush(playArea) {
+        const bushes = Array.from(playArea.querySelectorAll('.bush'));
+        const currentPosition = this.getPosition();
+        for (let bush of bushes) {
+            if (bush !== this.homeBush) {
+                const bushPosition = this.getBushPosition(bush);
+                const distance = this.getDistance(currentPosition, bushPosition);
+                if (distance < 200) {
+                    return bush;
+                }
+            }
+        }
+        return null;
     }
 
-    move(playArea) {
-        const currentPosition = this.getPosition();
-        let targetPosition;
-
-        if (Math.random() < 0.8) { // 80% chance to move towards home bush
-            targetPosition = this.getBushPosition(this.homeBush);
-        } else { // 20% chance to move randomly
-            targetPosition = {
-                x: Math.random() * playArea.clientWidth,
-                y: Math.random() * playArea.clientHeight
-            };
+    visitBush(bush) {
+        if (this.carriesPollen && bush !== this.pollenSource) {
+            this.pollinate(bush);
         }
+        this.carriesPollen = true;
+        this.pollenSource = bush;
+        this.hunger = Math.min(this.hunger + 20, 100);
+    }
 
-        const dx = targetPosition.x - currentPosition.x;
-        const dy = targetPosition.y - currentPosition.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance > 5) {
-            const speed = 2;
-            const newX = currentPosition.x + (dx / distance) * speed;
-            const newY = currentPosition.y + (dy / distance) * speed;
-            this.setPosition({ x: newX, y: newY });
+    pollinate(bush) {
+        if (Math.random() < 0.1) {
+            bush.pollinate(10);
         }
+        this.carriesPollen = false;
+        this.pollenSource = null;
+    }
 
-        // Add some randomness to the movement
-        this.setPosition({
-            x: parseFloat(this.element.style.left) + (Math.random() - 0.5) * 2,
-            y: parseFloat(this.element.style.top) + (Math.random() - 0.5) * 2
-        });
+    getRandomPositionInPlay(playArea) {
+        return {
+            x: Math.random() * (playArea.clientWidth - 20),
+            y: Math.random() * (playArea.clientHeight - 20)
+        };
+    }
+
+    getDistance(pos1, pos2) {
+        const dx = pos1.x - pos2.x;
+        const dy = pos1.y - pos2.y;
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    die(playArea) {
+        playArea.removeChild(this.element);
+        // The GameEngine should handle removing this butterfly from its entities
     }
 }
 
