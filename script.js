@@ -229,7 +229,7 @@ class GameEngine {
         });
     }
 
-    checkCollision(elem1, elem2) {
+checkCollision(elem1, elem2) {
         const rect1 = elem1.getBoundingClientRect();
         const rect2 = elem2.getBoundingClientRect();
         return !(rect1.right < rect2.left || 
