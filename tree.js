@@ -1,4 +1,5 @@
 // tree.js
+import { EMOJIS } from './constants.js';
 
 const EMOJIS = {
     TREE: '🌳',
