@@ -5,6 +5,7 @@ import { Tree, addTree, unlockTree } from './tree.js';
 import { Butterfly, addButterflies } from './butterfly.js';
 import { Worm, addWorm, addRandomWorms } from './worm.js';
 import { Bird, addBird } from './bird.js';
+import { EMOJIS } from './constants.js';
 
 const EMOJIS = {
     BUSH: '🌺',
