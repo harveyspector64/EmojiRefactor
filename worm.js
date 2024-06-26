@@ -3,6 +3,7 @@ import { EMOJIS } from './constants.js';
 export class Worm {
     constructor(x, y) {
         this.element = this.createWormElement(x, y);
+        this.wiggleInterval = null;
         this.startWiggle();
     }
 
@@ -17,11 +18,35 @@ export class Worm {
     }
 
     startWiggle() {
-        // Implement wiggle animation
+        const wiggle = () => {
+            const wiggleAmount = Math.random() * 5;
+            const wiggleDirection = Math.random() > 0.5 ? 1 : -1;
+
+            this.element.style.transform = `translateX(${wiggleDirection * wiggleAmount}px)`;
+
+            const wiggleTime = Math.random() * 3000 + 2000;
+
+            this.wiggleInterval = setTimeout(() => {
+                this.element.style.transform = '';
+                this.wiggleInterval = setTimeout(wiggle, wiggleTime);
+            }, 500);
+        };
+
+        this.wiggleInterval = setTimeout(wiggle, Math.random() * 3000 + 2000);
     }
 
-    update() {
-        // Update worm state if needed
+    stopWiggle() {
+        if (this.wiggleInterval) {
+            clearTimeout(this.wiggleInterval);
+            this.wiggleInterval = null;
+        }
+    }
+
+    remove() {
+        this.stopWiggle();
+        if (this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+        }
     }
 }
 
