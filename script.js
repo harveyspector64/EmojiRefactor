@@ -21,6 +21,7 @@ class GameEngine {
         this.eventMenu = document.getElementById('event-menu');
         this.selectedEmoji = null;
         this.draggedElement = null;
+        this.firstBirdLanded = false;
     }
 
     initialize() {
@@ -131,14 +132,19 @@ class GameEngine {
             case EMOJIS.BUSH:
                 const bush = addFloweringBush(x, y, this.playArea);
                 this.entities.bushes.push(bush);
-                this.entities.butterflies = this.entities.butterflies.concat(addButterflies(bush, this.playArea));
+                setTimeout(() => {
+                    const newButterflies = addButterflies(bush, this.playArea);
+                    this.entities.butterflies = this.entities.butterflies.concat(newButterflies);
+                }, Math.random() * 3000 + 1000);
                 this.unlockTreeIfNeeded();
                 break;
             case EMOJIS.TREE:
                 const tree = addTree(x, y, this.playArea);
                 this.entities.trees.push(tree);
-                const bird = addBird(x, y, this.playArea);
-                this.entities.birds.push(bird);
+                setTimeout(() => {
+                    const bird = addBird(tree, this.playArea);
+                    this.entities.birds.push(bird);
+                }, Math.random() * 3000 + 1000);
                 break;
             case EMOJIS.WORM:
                 const worm = addWorm(x, y, this.playArea);
@@ -182,6 +188,7 @@ class GameEngine {
 
     gameLoop(timestamp) {
         this.update();
+        this.checkInteractions();
         requestAnimationFrame(this.gameLoop.bind(this));
     }
 
@@ -189,11 +196,43 @@ class GameEngine {
         for (let entityType in this.entities) {
             this.entities[entityType].forEach(entity => entity.update(this.playArea));
         }
-        this.checkInteractions();
     }
 
     checkInteractions() {
-        // Implement entity interactions here
+        this.checkBirdWormInteractions();
+        this.checkButterflyBushInteractions();
+    }
+
+    checkBirdWormInteractions() {
+        this.entities.birds.forEach(bird => {
+            if (bird.currentState === 'walking') {
+                this.entities.worms.forEach(worm => {
+                    if (this.checkCollision(bird.element, worm.element)) {
+                        bird.eatWorm(worm);
+                        this.entities.worms = this.entities.worms.filter(w => w !== worm);
+                    }
+                });
+            }
+        });
+    }
+
+    checkButterflyBushInteractions() {
+        this.entities.butterflies.forEach(butterfly => {
+            this.entities.bushes.forEach(bush => {
+                if (this.checkCollision(butterfly.element, bush.element)) {
+                    butterfly.pollinate(bush);
+                }
+            });
+        });
+    }
+
+    checkCollision(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+        return !(rect1.right < rect2.left || 
+                 rect1.left > rect2.right || 
+                 rect1.bottom < rect2.top || 
+                 rect1.top > rect2.bottom);
     }
 }
 
