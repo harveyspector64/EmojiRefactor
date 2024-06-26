@@ -1,3 +1,4 @@
+// constants.js
 export const EMOJIS = {
     BUSH: '🌺',
     TREE: '🌳',
