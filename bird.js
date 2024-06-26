@@ -1,4 +1,5 @@
 // bird.js
+import { EMOJIS } from './constants.js';
 
 const EMOJIS = {
     BIRD: '🐦',
