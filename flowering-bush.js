@@ -1,3 +1,4 @@
+// flowering-bush.js
 import { EMOJIS } from './constants.js';
 
 export class FloweringBush {
@@ -38,9 +39,7 @@ export class FloweringBush {
     }
 
     addButterfly() {
-        const butterfly = new Butterfly(this);
-        this.butterflies.push(butterfly);
-        return butterfly;
+        // This function is now handled in the GameEngine class
     }
 
     startCooldown() {
@@ -52,6 +51,7 @@ export class FloweringBush {
 
     die() {
         this.element.remove();
+        // Additional logic for removing the bush from the game state should be handled in the GameEngine
     }
 
     pollinate(amount) {
