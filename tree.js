@@ -1,3 +1,4 @@
+// tree.js
 import { EMOJIS } from './constants.js';
 
 export class Tree {
@@ -72,7 +73,7 @@ class Nest {
     hatch() {
         this.element.remove();
         this.tree.nest = null;
-        // Logic for adding new birds would go here
+        // Logic for adding new birds would go here, but should be handled by the GameEngine
     }
 }
 
