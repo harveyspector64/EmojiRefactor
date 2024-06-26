@@ -64,3 +64,23 @@ body {
     position: relative;
     overflow: hidden;
 }
+
+.emoji.butterfly {
+    font-size: 0.8em;
+}
+
+.emoji.bird {
+    font-size: 1.2em;
+}
+
+.emoji.tree {
+    font-size: 2em;
+}
+
+.emoji.bush {
+    font-size: 1.5em;
+}
+
+.emoji.worm {
+    font-size: 0.6em;
+}
