@@ -76,8 +76,9 @@ class GameEngine {
 
     handleDrop(e) {
         if (this.selectedEmoji) {
-            const x = e.clientX - this.playArea.offsetLeft;
-            const y = e.clientY - this.playArea.offsetTop;
+            const rect = this.playArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             this.addEmojiToPlayArea(this.selectedEmoji, x, y);
             this.resetDragState();
         }
@@ -107,8 +108,9 @@ class GameEngine {
     handleTouchEnd(e) {
         if (this.selectedEmoji) {
             const touch = e.changedTouches[0];
-            const x = touch.clientX - this.playArea.offsetLeft;
-            const y = touch.clientY - this.playArea.offsetTop;
+            const rect = this.playArea.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
             this.addEmojiToPlayArea(this.selectedEmoji, x, y);
             this.resetDragState();
         }
@@ -206,10 +208,11 @@ class GameEngine {
     checkBirdWormInteractions() {
         this.entities.birds.forEach(bird => {
             if (bird.currentState === 'walking') {
-                this.entities.worms.forEach(worm => {
+                this.entities.worms.forEach((worm, index) => {
                     if (this.checkCollision(bird.element, worm.element)) {
                         bird.eatWorm(worm);
-                        this.entities.worms = this.entities.worms.filter(w => w !== worm);
+                        this.entities.worms.splice(index, 1);
+                        this.addEventLogMessage(`A bird has eaten a worm!`);
                     }
                 });
             }
