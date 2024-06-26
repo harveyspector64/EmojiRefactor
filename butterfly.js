@@ -1,4 +1,5 @@
 // butterfly.js
+import { EMOJIS } from './constants.js';
 
 const EMOJIS = {
     BUTTERFLY: '🦋'
