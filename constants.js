@@ -1,4 +1,3 @@
-// constants.js
 export const EMOJIS = {
     BUSH: '🌺',
     TREE: '🌳',
@@ -6,8 +5,3 @@ export const EMOJIS = {
     BIRD: '🐦',
     WORM: '🐛'
 };
-
-const INITIAL_EMOJIS = [
-    { id: 'flowering-bush', emoji: EMOJIS.BUSH },
-    { id: 'tree', emoji: EMOJIS.TREE, disabled: true }
-];
