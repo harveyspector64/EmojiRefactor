@@ -7,14 +7,6 @@ import { Butterfly, addButterflies } from './butterfly.js';
 import { Worm, addWorm, addRandomWorms } from './worm.js';
 import { Bird, addBird } from './bird.js';
 
-const EMOJIS = {
-    BUSH: '🌺',
-    TREE: '🌳',
-    BUTTERFLY: '🦋',
-    BIRD: '🐦',
-    WORM: '🐛'
-};
-
 class GameEngine {
     constructor() {
         this.entities = {
@@ -29,7 +21,6 @@ class GameEngine {
         this.eventMenu = document.getElementById('event-menu');
         this.selectedEmoji = null;
         this.draggedElement = null;
-        this.firstBirdLanded = false;
     }
 
     initialize() {
@@ -39,9 +30,9 @@ class GameEngine {
     }
 
     setupEventListeners() {
-        this.emojiPanel.addEventListener('dragstart', this.handleDragStart.bind(this));
-        this.playArea.addEventListener('dragover', (e) => e.preventDefault());
-        this.playArea.addEventListener('drop', this.handleDrop.bind(this));
+        this.emojiPanel.addEventListener('mousedown', this.handleDragStart.bind(this));
+        this.playArea.addEventListener('mousemove', this.handleDragOver.bind(this));
+        this.playArea.addEventListener('mouseup', this.handleDrop.bind(this));
         this.emojiPanel.addEventListener('touchstart', this.handleTouchStart.bind(this));
         document.addEventListener('touchmove', this.handleTouchMove.bind(this));
         document.addEventListener('touchend', this.handleTouchEnd.bind(this));
@@ -54,63 +45,85 @@ class GameEngine {
         ];
 
         initialEmojis.forEach(item => {
-            const element = document.getElementById(item.id);
+            const element = document.createElement('div');
+            element.id = item.id;
+            element.textContent = item.emoji;
+            element.classList.add('emoji');
             if (item.disabled) {
                 element.classList.add('disabled');
-                element.setAttribute('draggable', 'false');
-            } else {
-                element.setAttribute('draggable', 'true');
             }
+            this.emojiPanel.appendChild(element);
         });
     }
 
     handleDragStart(e) {
-        if (e.target.classList.contains('emoji')) {
+        if (e.target.classList.contains('emoji') && !e.target.classList.contains('disabled')) {
             this.selectedEmoji = e.target.textContent;
-            e.dataTransfer.setData('text/plain', e.target.textContent);
+            this.draggedElement = e.target.cloneNode(true);
+            this.draggedElement.style.position = 'absolute';
+            this.draggedElement.style.pointerEvents = 'none';
+            document.body.appendChild(this.draggedElement);
+            this.updateDraggedElementPosition(e.clientX, e.clientY);
+        }
+    }
+
+    handleDragOver(e) {
+        if (this.draggedElement) {
+            this.updateDraggedElementPosition(e.clientX, e.clientY);
         }
     }
 
     handleDrop(e) {
-        e.preventDefault();
-        const x = e.clientX - this.playArea.offsetLeft;
-        const y = e.clientY - this.playArea.offsetTop;
-        const emoji = e.dataTransfer.getData('text/plain');
-        if (emoji) {
-            this.addEmojiToPlayArea(emoji, x, y);
-            this.selectedEmoji = null;
+        if (this.selectedEmoji) {
+            const x = e.clientX - this.playArea.offsetLeft;
+            const y = e.clientY - this.playArea.offsetTop;
+            this.addEmojiToPlayArea(this.selectedEmoji, x, y);
+            this.resetDragState();
         }
     }
 
     handleTouchStart(e) {
-        const touchedElement = e.target;
-        if (touchedElement && touchedElement.classList.contains('emoji')) {
-            this.selectedEmoji = touchedElement.textContent;
-            this.draggedElement = touchedElement.cloneNode(true);
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target.classList.contains('emoji') && !target.classList.contains('disabled')) {
+            this.selectedEmoji = target.textContent;
+            this.draggedElement = target.cloneNode(true);
             this.draggedElement.style.position = 'absolute';
             this.draggedElement.style.pointerEvents = 'none';
             document.body.appendChild(this.draggedElement);
+            this.updateDraggedElementPosition(touch.clientX, touch.clientY);
         }
     }
 
     handleTouchMove(e) {
         if (this.draggedElement) {
+            e.preventDefault();
             const touch = e.touches[0];
-            this.draggedElement.style.left = `${touch.clientX - 15}px`;
-            this.draggedElement.style.top = `${touch.clientY - 15}px`;
+            this.updateDraggedElementPosition(touch.clientX, touch.clientY);
         }
     }
 
     handleTouchEnd(e) {
-        if (this.selectedEmoji && this.draggedElement) {
+        if (this.selectedEmoji) {
             const touch = e.changedTouches[0];
             const x = touch.clientX - this.playArea.offsetLeft;
             const y = touch.clientY - this.playArea.offsetTop;
             this.addEmojiToPlayArea(this.selectedEmoji, x, y);
-            document.body.removeChild(this.draggedElement);
-            this.draggedElement = null;
-            this.selectedEmoji = null;
+            this.resetDragState();
         }
+    }
+
+    updateDraggedElementPosition(x, y) {
+        this.draggedElement.style.left = `${x - 15}px`;
+        this.draggedElement.style.top = `${y - 15}px`;
+    }
+
+    resetDragState() {
+        if (this.draggedElement) {
+            document.body.removeChild(this.draggedElement);
+        }
+        this.draggedElement = null;
+        this.selectedEmoji = null;
     }
 
     addEmojiToPlayArea(emoji, x, y) {
@@ -160,8 +173,7 @@ class GameEngine {
         
         this.eventMenu.appendChild(eventMessageElement);
         
-        // Keep only the last 5 messages
-        while (this.eventMenu.children.length > 6) { // +1 for the header
+        while (this.eventMenu.children.length > 6) {
             this.eventMenu.removeChild(this.eventMenu.children[1]);
         }
         
@@ -170,7 +182,6 @@ class GameEngine {
 
     gameLoop(timestamp) {
         this.update();
-        this.performanceMonitor.update(timestamp);
         requestAnimationFrame(this.gameLoop.bind(this));
     }
 
@@ -181,43 +192,9 @@ class GameEngine {
         this.checkInteractions();
     }
 
-checkInteractions() {
-    // Call interaction checking methods from entity modules or a separate interactions module
-    this.checkBirdWormInteractions();
-    this.checkButterflyBushInteractions();
-    // Add other interaction checks as needed
-}
-
-checkBirdWormInteractions() {
-    // This method would use the bird and worm entities to check for and handle interactions
-    // It might call methods from the Bird and Worm classes
-}
-
-checkButterflyBushInteractions() {
-    // This method would handle butterfly and bush interactions
-    // It might call methods from the Butterfly and FloweringBush classes
-}
-
-    performanceMonitor = {
-        frameCount: 0,
-        lastTime: performance.now(),
-        fps: 0,
-        lastLogTime: 0,
-
-        update: function(currentTime) {
-            this.frameCount++;
-            if (currentTime - this.lastTime >= 1000) {
-                this.fps = this.frameCount;
-                this.frameCount = 0;
-                this.lastTime = currentTime;
-                
-                if (currentTime - this.lastLogTime >= 5000) {
-                    console.log(`Current FPS: ${this.fps}`);
-                    this.lastLogTime = currentTime;
-                }
-            }
-        }
-    };
+    checkInteractions() {
+        // Implement entity interactions here
+    }
 }
 
 // Initialize the game when the DOM is fully loaded
