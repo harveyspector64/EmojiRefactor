@@ -65,22 +65,23 @@ body {
     overflow: hidden;
 }
 
+/* Entity-specific sizes */
 .emoji.butterfly {
-    font-size: 0.8em;
+    font-size: 0.8em !important;
 }
 
 .emoji.bird {
-    font-size: 1.2em;
+    font-size: 1.2em !important;
 }
 
 .emoji.tree {
-    font-size: 2em;
+    font-size: 2em !important;
 }
 
 .emoji.bush {
-    font-size: 1.5em;
+    font-size: 1.5em !important;
 }
 
 .emoji.worm {
-    font-size: 0.6em;
+    font-size: 0.6em !important;
 }
