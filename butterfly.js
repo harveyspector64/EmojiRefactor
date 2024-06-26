@@ -66,7 +66,7 @@ export class Butterfly {
         const currentPosition = this.getPosition();
         let targetPosition;
 
-        if (Math.random() < 0.8) {
+        if (this.homeBush && Math.random() < 0.8) {
             targetPosition = this.getBushPosition(this.homeBush);
         } else {
             const nearbyBush = this.findNearbyBush(playArea);
@@ -78,43 +78,50 @@ export class Butterfly {
             }
         }
 
-        const dx = targetPosition.x - currentPosition.x;
-        const dy = targetPosition.y - currentPosition.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
+        if (targetPosition) {
+            const dx = targetPosition.x - currentPosition.x;
+            const dy = targetPosition.y - currentPosition.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
 
-        if (distance > 5) {
-            const speed = 2;
-            const newX = currentPosition.x + (dx / distance) * speed;
-            const newY = currentPosition.y + (dy / distance) * speed;
-            this.setPosition({x: newX, y: newY});
-        } else if (Math.random() < 0.3) {
-            this.state = 'resting';
+            if (distance > 5) {
+                const speed = 2;
+                const newX = currentPosition.x + (dx / distance) * speed;
+                const newY = currentPosition.y + (dy / distance) * speed;
+                this.setPosition({x: newX, y: newY});
+            } else if (Math.random() < 0.3) {
+                this.state = 'resting';
+            }
+
+            // Add some randomness to the movement
+            this.setPosition({
+                x: parseFloat(this.element.style.left) + (Math.random() - 0.5) * 2,
+                y: parseFloat(this.element.style.top) + (Math.random() - 0.5) * 2
+            });
         }
-
-        // Add some randomness to the movement
-        this.setPosition({
-            x: parseFloat(this.element.style.left) + (Math.random() - 0.5) * 2,
-            y: parseFloat(this.element.style.top) + (Math.random() - 0.5) * 2
-        });
     }
 
     getBushPosition(bush) {
-        return {
-            x: parseFloat(bush.element.style.left),
-            y: parseFloat(bush.element.style.top)
-        };
+        if (bush && bush.element && bush.element.style) {
+            return {
+                x: parseFloat(bush.element.style.left),
+                y: parseFloat(bush.element.style.top)
+            };
+        }
+        // If the bush doesn't exist, return the butterfly's current position
+        return this.getPosition();
     }
 
     findNearbyBush(playArea) {
         const bushes = Array.from(playArea.querySelectorAll('.bush'));
         const currentPosition = this.getPosition();
-        for (let bush of bushes) {
-            if (bush !== this.homeBush) {
-                const bushPosition = this.getBushPosition(bush);
-                const distance = this.getDistance(currentPosition, bushPosition);
-                if (distance < 200) {
-                    return bush;
-                }
+        for (let bushElement of bushes) {
+            const bushPosition = {
+                x: parseFloat(bushElement.style.left),
+                y: parseFloat(bushElement.style.top)
+            };
+            const distance = this.getDistance(currentPosition, bushPosition);
+            if (distance < 200) {
+                return { element: bushElement };
             }
         }
         return null;
