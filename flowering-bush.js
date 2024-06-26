@@ -1,4 +1,5 @@
 // flowering-bush.js
+import { EMOJIS } from './constants.js';
 
 const EMOJIS = {
     BUSH: '🌺',
