@@ -180,10 +180,22 @@ class GameEngine {
         this.checkInteractions();
     }
 
-    checkInteractions() {
-        // Implement entity interactions here
-        // e.g., birds eating worms, butterflies pollinating bushes, etc.
-    }
+checkInteractions() {
+    // Call interaction checking methods from entity modules or a separate interactions module
+    this.checkBirdWormInteractions();
+    this.checkButterflyBushInteractions();
+    // Add other interaction checks as needed
+}
+
+checkBirdWormInteractions() {
+    // This method would use the bird and worm entities to check for and handle interactions
+    // It might call methods from the Bird and Worm classes
+}
+
+checkButterflyBushInteractions() {
+    // This method would handle butterfly and bush interactions
+    // It might call methods from the Butterfly and FloweringBush classes
+}
 
     performanceMonitor = {
         frameCount: 0,
